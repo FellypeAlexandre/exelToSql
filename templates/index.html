@@ -2,118 +2,743 @@
 <html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Conversor Excel → SQL</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-    <header>
-        <h1>Conversor Excel para SQL</h1>
-        <button class="theme-toggle">Alternar Tema</button>
+    <header class="navbar navbar-expand-lg">
+        <div class="container">
+            <span class="navbar-brand h1 mb-0">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+                Conversor Excel para SQL
+            </span>
+            <button class="btn btn-outline-primary theme-toggle">
+                <i class="bi bi-sun-fill d-none" id="light-icon"></i>
+                <i class="bi bi-moon-fill" id="dark-icon"></i>
+                <span class="ms-1">Tema</span>
+            </button>
+        </div>
     </header>
 
-    <main class="container">
+    <main class="container my-4">
 
-        <form id="uploadForm" class="upload-area">
-            <input type="file" name="excelFile" accept=".xls,.xlsx" required>
-            <button type="submit">Enviar</button>
-        </form>
-
-        <div id="sheetSelect" class="sheet-select" style="display:none;">
-            <label for="sheets">Escolha a aba:</label>
-            <select id="sheets"></select>
-            <button id="loadColumns">Carregar Colunas</button>
+        <!-- Progress Steps -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="progress-steps">
+                    <div class="step active" data-step="1">
+                        <div class="step-icon">
+                            <i class="bi bi-upload"></i>
+                        </div>
+                        <div class="step-text">Upload</div>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-icon">
+                            <i class="bi bi-table"></i>
+                        </div>
+                        <div class="step-text">Planilha</div>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-icon">
+                            <i class="bi bi-list-columns"></i>
+                        </div>
+                        <div class="step-text">Colunas</div>
+                    </div>
+                    <div class="step" data-step="4">
+                        <div class="step-icon">
+                            <i class="bi bi-code-square"></i>
+                        </div>
+                        <div class="step-text">SQL</div>
+                    </div>
+                    <div class="step" data-step="5">
+                        <div class="step-icon">
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <div class="step-text">Download</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="columnsArea" style="display:none;">
-            <h3>Colunas disponíveis:</h3>
-            <ul id="columns"></ul>
-
-            <textarea id="template" rows="6" cols="80" placeholder="Digite seu comando SQL usando {colunas}..."></textarea><br>
-            <input type="text" id="output_name" placeholder="Nome do arquivo de saída (ex: saida.sql)"><br>
-            <button id="generate">Gerar SQL</button>
+        <!-- Step 1: Upload -->
+        <div class="step-content" id="step-1">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-upload me-2"></i>
+                                Passo 1: Upload do Arquivo Excel
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="uploadForm">
+                                <div class="upload-zone border-2 border-dashed rounded p-4 text-center">
+                                    <i class="bi bi-cloud-upload fs-1 text-primary mb-3"></i>
+                                    <p class="mb-3">Arraste e solte seu arquivo Excel aqui ou clique para selecionar</p>
+                                    <input type="file" name="excelFile" accept=".xls,.xlsx" required class="form-control mb-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-upload me-2"></i>
+                                        Enviar Arquivo
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="downloadLink" style="display:none;">
-            <a id="link" class="btn" href="#">Download SQL</a>
+        <!-- Step 2: Sheet Selection -->
+        <div class="step-content d-none" id="step-2">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-table me-2"></i>
+                                Passo 2: Selecionar Planilha
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="sheets" class="form-label">Escolha a aba da planilha:</label>
+                                <select id="sheets" class="form-select">
+                                    <option value="">Selecione uma aba...</option>
+                                </select>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-secondary" onclick="goToStep(1)">
+                                    <i class="bi bi-arrow-left me-2"></i>
+                                    Voltar para Upload
+                                </button>
+                                <button id="loadColumns" class="btn btn-primary" disabled>
+                                    <i class="bi bi-arrow-right me-2"></i>
+                                    Próximo: Carregar Colunas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Columns -->
+        <div class="step-content d-none" id="step-3">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list-columns me-2"></i>
+                                Passo 3: Colunas Disponíveis
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Colunas encontradas:</h6>
+                                    <div class="list-group" id="columns" style="max-height: 300px; overflow-y: auto;">
+                                        <!-- Columns will be populated here -->
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Dica:</strong> As colunas encontradas serão usadas no próximo passo para criar o template SQL. 
+                                        Você pode clicar no botão de copiar ao lado de cada coluna para inseri-la no template.
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-outline-secondary" onclick="goToStep(2)">
+                                            <i class="bi bi-arrow-left me-2"></i>
+                                            Voltar para Planilha
+                                        </button>
+                                        <button class="btn btn-primary" onclick="goToStep(4)">
+                                            <i class="bi bi-arrow-right me-2"></i>
+                                            Próximo: Criar Template SQL
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: SQL Template -->
+        <div class="step-content d-none" id="step-4">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-code-square me-2"></i>
+                                Passo 4: Template SQL
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">Templates SQL pré-definidos:</label>
+                                        <div class="btn-group d-flex mb-3" role="group">
+                                            <button type="button" class="btn btn-outline-success" onclick="useTemplate('insert')">
+                                                <i class="bi bi-plus-circle me-1"></i>
+                                                INSERT
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning" onclick="useTemplate('update')">
+                                                <i class="bi bi-pencil-square me-1"></i>
+                                                UPDATE
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" onclick="useTemplate('delete')">
+                                                <i class="bi bi-trash me-1"></i>
+                                                DELETE
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="clearTemplate()">
+                                                <i class="bi bi-eraser me-1"></i>
+                                                Limpar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="table_name" class="form-label">Nome da tabela:</label>
+                                        <input type="text" id="table_name" class="form-control" placeholder="Ex: usuarios, produtos, vendas..." value="nome_da_tabela">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="template" class="form-label">Template SQL:</label>
+                                        <textarea id="template" class="form-control" rows="8" placeholder="Escolha um template acima ou digite seu comando SQL personalizado usando {nome_da_coluna}..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="output_name" class="form-label">Nome do arquivo:</label>
+                                        <input type="text" id="output_name" class="form-control" placeholder="Ex: comandos_sql.sql">
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-outline-secondary" onclick="goToStep(3)">
+                                            <i class="bi bi-arrow-left me-2"></i>
+                                            Voltar para Colunas
+                                        </button>
+                                        <button id="generate" class="btn btn-success">
+                                            <i class="bi bi-gear-fill me-2"></i>
+                                            Gerar SQL
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Colunas disponíveis:</h6>
+                                    <div class="alert alert-warning">
+                                        <small>
+                                            <i class="bi bi-lightbulb me-1"></i>
+                                            Clique no ícone <i class="bi bi-clipboard"></i> para copiar uma coluna para o template
+                                        </small>
+                                    </div>
+                                    <div class="list-group" id="columns-template" style="max-height: 300px; overflow-y: auto;">
+                                        <!-- Columns will be copied here -->
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6>Exemplos de uso:</h6>
+                                        <div class="accordion accordion-flush" id="examplesAccordion">
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#insertExample">
+                                                        INSERT
+                                                    </button>
+                                                </h2>
+                                                <div id="insertExample" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                                    <div class="accordion-body">
+                                                        <small>
+                                                            <code>INSERT INTO usuarios (nome, email) VALUES ('{nome}', '{email}');</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateExample">
+                                                        UPDATE
+                                                    </button>
+                                                </h2>
+                                                <div id="updateExample" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                                    <div class="accordion-body">
+                                                        <small>
+                                                            <code>UPDATE usuarios SET nome = '{nome}', email = '{email}' WHERE id = {id};</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteExample">
+                                                        DELETE
+                                                    </button>
+                                                </h2>
+                                                <div id="deleteExample" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                                    <div class="accordion-body">
+                                                        <small>
+                                                            <code>DELETE FROM usuarios WHERE id = {id};</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Download -->
+        <div class="step-content d-none" id="step-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-download me-2"></i>
+                                Passo 5: Download
+                            </h5>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="goToStep(4)">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Voltar
+                            </button>
+                        </div>
+                        <div class="card-body text-center">
+                            <i class="bi bi-check-circle-fill text-success fs-1 mb-3"></i>
+                            <h4 class="text-success mb-3">SQL Gerado com Sucesso!</h4>
+                            <p class="mb-4">Seu arquivo SQL foi gerado e está pronto para download.</p>
+                            <a id="downloadLink" class="btn btn-success btn-lg mb-3" href="#">
+                                <i class="bi bi-download me-2"></i>
+                                Baixar Arquivo SQL
+                            </a>
+                            
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-secondary" onclick="goToStep(4)">
+                                            <i class="bi bi-arrow-left me-2"></i>
+                                            Voltar para Template
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-primary" onclick="startOver()">
+                                            <i class="bi bi-arrow-clockwise me-2"></i>
+                                            Processar Novo Arquivo
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Você pode voltar para qualquer etapa anterior para fazer correções, ou começar um novo processo.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </main>
 
-    <footer class="footer">
-        &copy; 2025 Conversor Excel → SQL | Desenvolvido por LipeRllk.
+    <footer class="footer mt-auto py-3">
+        <div class="container text-center">
+            <span class="text-muted">
+                &copy; 2025 Conversor Excel → SQL | Desenvolvido por LipeRllk
+            </span>
+        </div>
     </footer>
 
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         let uploadedFilename = "";
+        let currentStep = 1;
+        let columnsData = [];
 
+        // Step navigation functions
+        function goToStep(step) {
+            // Validação: não permitir ir para etapas futuras sem completar as anteriores
+            if (step > currentStep + 1 && !validateStepAccess(step)) {
+                return;
+            }
+            
+            // Hide current step
+            document.querySelector('.step-content:not(.d-none)').classList.add('d-none');
+            
+            // Show new step
+            document.getElementById(`step-${step}`).classList.remove('d-none');
+            
+            // Update progress steps
+            updateProgressSteps(step);
+            
+            currentStep = step;
+        }
+
+        function updateProgressSteps(currentStep) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active', 'completed', 'accessible'));
+            
+            for (let i = 1; i <= 5; i++) {
+                const stepElement = document.querySelector(`[data-step="${i}"]`);
+                
+                if (i < currentStep) {
+                    stepElement.classList.add('completed');
+                } else if (i === currentStep) {
+                    stepElement.classList.add('active');
+                } else if (validateStepAccess(i)) {
+                    stepElement.classList.add('accessible');
+                }
+            }
+        }
+
+        function validateStepAccess(targetStep) {
+            // Lógica para validar se o usuário pode acessar determinada etapa
+            if (targetStep <= 1) return true;
+            if (targetStep === 2) return uploadedFilename !== "";
+            if (targetStep === 3) return uploadedFilename !== "" && document.getElementById('sheets').value;
+            if (targetStep === 4) return columnsData.length > 0;
+            if (targetStep === 5) return false; // Só pode ir para step 5 através do processo normal
+            return false;
+        }
+
+        function startOver() {
+            uploadedFilename = "";
+            columnsData = [];
+            document.getElementById('uploadForm').reset();
+            document.getElementById('sheets').innerHTML = '<option value="">Selecione uma aba...</option>';
+            document.getElementById('template').value = '';
+            document.getElementById('output_name').value = '';
+            document.getElementById('loadColumns').disabled = true;
+            goToStep(1);
+            updateProgressSteps(1);
+        }
+
+        // Template functions
+        function useTemplate(type) {
+            const textarea = document.getElementById('template');
+            const outputNameInput = document.getElementById('output_name');
+            const tableNameInput = document.getElementById('table_name');
+            
+            // Obter nome da tabela ou usar padrão
+            const tableName = tableNameInput.value.trim() || 'nome_da_tabela';
+            
+            // Obter primeira coluna disponível como exemplo (se existir)
+            const firstColumn = columnsData.length > 0 ? columnsData[0] : 'coluna1';
+            const secondColumn = columnsData.length > 1 ? columnsData[1] : 'coluna2';
+            const idColumn = columnsData.find(col => col.toLowerCase().includes('id')) || firstColumn;
+            
+            let template = '';
+            let fileName = '';
+            
+            switch(type) {
+                case 'insert':
+                    if (columnsData.length > 0) {
+                        const columns = columnsData.join(', ');
+                        const values = columnsData.map(col => `'{${col}}'`).join(', ');
+                        template = `INSERT INTO ${tableName} (${columns}) VALUES (${values});`;
+                    } else {
+                        template = `INSERT INTO ${tableName} (${firstColumn}, ${secondColumn}) VALUES ('{${firstColumn}}', '{${secondColumn}}');`;
+                    }
+                    fileName = `insert_${tableName}.sql`;
+                    break;
+                    
+                case 'update':
+                    if (columnsData.length > 0) {
+                        const setClause = columnsData
+                            .filter(col => !col.toLowerCase().includes('id'))
+                            .map(col => `${col} = '{${col}}'`)
+                            .join(', ');
+                        template = `UPDATE ${tableName} SET ${setClause || `${firstColumn} = '{${firstColumn}}'`} WHERE ${idColumn} = {${idColumn}};`;
+                    } else {
+                        template = `UPDATE ${tableName} SET ${firstColumn} = '{${firstColumn}}', ${secondColumn} = '{${secondColumn}}' WHERE id = {id};`;
+                    }
+                    fileName = `update_${tableName}.sql`;
+                    break;
+                    
+                case 'delete':
+                    template = `DELETE FROM ${tableName} WHERE ${idColumn} = {${idColumn}};`;
+                    fileName = `delete_${tableName}.sql`;
+                    break;
+            }
+            
+            textarea.value = template;
+            if (!outputNameInput.value || outputNameInput.value.includes('nome_da_tabela')) {
+                outputNameInput.value = fileName;
+            }
+            
+            // Highlight the template type button
+            document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Show success message
+            showToast(`Template ${type.toUpperCase()} aplicado para a tabela "${tableName}"!`, 'success');
+        }
+
+        // Função para limpar template
+        function clearTemplate() {
+            document.getElementById('template').value = '';
+            document.getElementById('output_name').value = '';
+            document.getElementById('table_name').value = 'nome_da_tabela';
+            
+            // Remover highlight dos botões
+            document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            
+            showToast('Template limpo!', 'info');
+        }
+
+        // Adicionar navegação clicável nos indicadores de progresso
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.step').forEach(step => {
+                step.style.cursor = 'pointer';
+                step.addEventListener('click', function() {
+                    const stepNumber = parseInt(this.dataset.step);
+                    if (validateStepAccess(stepNumber)) {
+                        goToStep(stepNumber);
+                    } else {
+                        // Mostrar mensagem de aviso
+                        showToast('Complete as etapas anteriores primeiro!', 'warning');
+                    }
+                });
+            });
+            
+            // Listener para atualização automática do template quando nome da tabela muda
+            const tableNameInput = document.getElementById('table_name');
+            if (tableNameInput) {
+                tableNameInput.addEventListener('input', function() {
+                    const activeButton = document.querySelector('.btn-group .btn.active');
+                    if (activeButton) {
+                        // Re-aplicar o template com o novo nome da tabela
+                        const buttonText = activeButton.textContent.trim();
+                        let templateType = '';
+                        if (buttonText.includes('INSERT')) templateType = 'insert';
+                        else if (buttonText.includes('UPDATE')) templateType = 'update';
+                        else if (buttonText.includes('DELETE')) templateType = 'delete';
+                        
+                        if (templateType) {
+                            // Chamar useTemplate sem mostrar toast adicional
+                            const textarea = document.getElementById('template');
+                            const outputNameInput = document.getElementById('output_name');
+                            const tableName = tableNameInput.value.trim() || 'nome_da_tabela';
+                            
+                            // Atualizar apenas o template sem toast
+                            const currentTemplate = textarea.value;
+                            if (currentTemplate) {
+                                const updatedTemplate = currentTemplate.replace(/\b\w+_da_tabela\b|\b\w+\b(?=\s+\()/g, tableName);
+                                textarea.value = updatedTemplate;
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        // Função para mostrar mensagens toast
+        function showToast(message, type = 'info') {
+            // Determinar a cor do toast
+            let bgClass = 'bg-primary';
+            if (type === 'warning') bgClass = 'bg-warning';
+            if (type === 'success') bgClass = 'bg-success';
+            if (type === 'error') bgClass = 'bg-danger';
+            
+            // Criar toast element
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar ao DOM
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '9999';
+                document.body.appendChild(toastContainer);
+            }
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = toastContainer.lastElementChild;
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+            
+            // Remover após mostrar
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        }
+
+        // Upload form
         document.getElementById('uploadForm').onsubmit = async function (e) {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-            uploadedFilename = result.filename;
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Erro no upload');
+                
+                const result = await response.json();
+                uploadedFilename = result.filename;
 
-            const select = document.getElementById('sheets');
-            select.innerHTML = "";
-            result.sheets.forEach(sheet => {
-                const option = document.createElement('option');
-                option.value = sheet;
-                option.textContent = sheet;
-                select.appendChild(option);
-            });
-            document.getElementById('sheetSelect').style.display = 'block';
+                const select = document.getElementById('sheets');
+                select.innerHTML = '<option value="">Selecione uma aba...</option>';
+                result.sheets.forEach(sheet => {
+                    const option = document.createElement('option');
+                    option.value = sheet;
+                    option.textContent = sheet;
+                    select.appendChild(option);
+                });
+                
+                goToStep(2);
+                updateProgressSteps(2);
+            } catch (error) {
+                alert('Erro ao fazer upload do arquivo: ' + error.message);
+            }
+        };
+
+        // Sheet selection
+        document.getElementById('sheets').onchange = function() {
+            document.getElementById('loadColumns').disabled = !this.value;
+            updateProgressSteps(currentStep);
         };
 
         document.getElementById('loadColumns').onclick = async function () {
             const sheet = document.getElementById('sheets').value;
-            const response = await fetch('/columns', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: uploadedFilename, sheet })
-            });
-            const result = await response.json();
-            const ul = document.getElementById('columns');
-            ul.innerHTML = "";
-            result.columns.forEach(col => {
-                const li = document.createElement('li');
-                li.textContent = `{${col}}`;
-                ul.appendChild(li);
-            });
-            document.getElementById('columnsArea').style.display = 'block';
+            if (!sheet) return;
+            
+            try {
+                const response = await fetch('/columns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: uploadedFilename, sheet })
+                });
+                
+                if (!response.ok) throw new Error('Erro ao carregar colunas');
+                
+                const result = await response.json();
+                columnsData = result.columns;
+                
+                // Populate columns in step 3
+                const columnsContainer = document.getElementById('columns');
+                columnsContainer.innerHTML = "";
+                result.columns.forEach(col => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action';
+                    item.innerHTML = `
+                        <code>{${col}}</code>
+                        <button class="btn btn-sm btn-outline-primary float-end copy-column" data-column="${col}">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    `;
+                    columnsContainer.appendChild(item);
+                });
+                
+                // Copy columns to step 4 as well
+                const columnsTemplate = document.getElementById('columns-template');
+                columnsTemplate.innerHTML = columnsContainer.innerHTML;
+                
+                // Add click handlers for copy buttons
+                document.querySelectorAll('.copy-column').forEach(btn => {
+                    btn.onclick = function() {
+                        const column = this.dataset.column;
+                        const textarea = document.getElementById('template');
+                        const cursorPos = textarea.selectionStart;
+                        const textBefore = textarea.value.substring(0, cursorPos);
+                        const textAfter = textarea.value.substring(cursorPos);
+                        textarea.value = textBefore + `{${column}}` + textAfter;
+                        textarea.focus();
+                        textarea.setSelectionRange(cursorPos + column.length + 2, cursorPos + column.length + 2);
+                    };
+                });
+                
+                goToStep(3);
+                updateProgressSteps(3);
+            } catch (error) {
+                alert('Erro ao carregar colunas: ' + error.message);
+            }
         };
 
+        // Generate SQL
         document.getElementById('generate').onclick = async function () {
             const sheet = document.getElementById('sheets').value;
             const template = document.getElementById('template').value;
             const outputName = document.getElementById('output_name').value;
 
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filename: uploadedFilename,
-                    sheet,
-                    template,
-                    output_name: outputName
-                })
-            });
+            if (!template.trim()) {
+                alert('Por favor, insira um template SQL');
+                return;
+            }
 
-            const result = await response.json();
-            const link = document.getElementById('link');
-            link.href = result.download_url;
-            link.textContent = "Baixar SQL Gerado";
-            document.getElementById('downloadLink').style.display = 'block';
+            if (!outputName.trim()) {
+                alert('Por favor, insira um nome para o arquivo');
+                return;
+            }
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: uploadedFilename,
+                        sheet,
+                        template,
+                        output_name: outputName
+                    })
+                });
+
+                if (!response.ok) throw new Error('Erro ao gerar SQL');
+
+                const result = await response.json();
+                const link = document.getElementById('downloadLink');
+                link.href = result.download_url;
+                
+                goToStep(5);
+                updateProgressSteps(5);
+            } catch (error) {
+                alert('Erro ao gerar SQL: ' + error.message);
+            }
         };
 
-        // Alternância de tema
+        // Theme toggle
         document.querySelector('.theme-toggle').addEventListener('click', () => {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
-            html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            
+            // Toggle icons
+            const lightIcon = document.getElementById('light-icon');
+            const darkIcon = document.getElementById('dark-icon');
+            
+            if (newTheme === 'light') {
+                lightIcon.classList.remove('d-none');
+                darkIcon.classList.add('d-none');
+            } else {
+                lightIcon.classList.add('d-none');
+                darkIcon.classList.remove('d-none');
+            }
         });
     </script>
 
